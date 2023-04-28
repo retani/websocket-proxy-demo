@@ -22,9 +22,9 @@ const workerServer = http.createServer((req, res) => {
   })
 })
 
-workerServer.listen(port, () => {
+const httpServer = workerServer.listen(port, () => {
   console.log(
-    `Worker ${cluster.worker.id} listening on port ${port}`
+    `Worker ${cluster.worker.id} listening on port ${httpServer.address().port}`
   )
 })
 

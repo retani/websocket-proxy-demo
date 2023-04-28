@@ -3,15 +3,14 @@ import net from 'net'
 import cluster from 'cluster'
 
 const numWorkers = 2
-const basePath = 8000
+const primaryPort = 8000
 
 if (cluster.isPrimary) {
   // Create workers
   cluster.settings.exec = 'worker.js'
   for (let i = 0; i < numWorkers; i++) {
     cluster.fork({
-      WORKER_ID: i + 1,
-      PORT: basePath + i + 1
+      PORT: primaryPort + i + 1
     })
   }
 
@@ -22,7 +21,7 @@ if (cluster.isPrimary) {
 
     if (worker) {
       console.log('worker', worker.id)
-      const targetPort = basePath + worker.id
+      const targetPort = primaryPort + worker.id
       const proxy = http.request(
         { ...req, host: 'localhost', port: targetPort },
         proxyRes => {
@@ -44,15 +43,15 @@ if (cluster.isPrimary) {
     }
   })
 
-  server.listen(basePath, () => {
-    console.log(`Primary process listening on port ${basePath}`)
+  server.listen(primaryPort, () => {
+    console.log(`Primary process listening on port ${primaryPort}`)
   })
 
   // WebSocket proxy
   server.on('upgrade', (req, socket, head) => {
     // Custom logic to select a worker based on the request
     const selectedWorker = selectWorker(req, cluster.workers)
-    const targetPort = basePath + selectedWorker.id
+    const targetPort = primaryPort + selectedWorker.id
 
     // Create a socket to forward the request to the worker
     const workerSocket = net.connect(targetPort, 'localhost', () => {
