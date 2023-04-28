@@ -17,7 +17,8 @@
 
     document.getElementById('connectBtn').addEventListener('click', () => {
       // Connect to the WebSocket server
-      ws = new WebSocket('ws://localhost:8000/2'); // Adjust the path to select the desired worker
+      // get url path from window
+      ws = new WebSocket('ws://localhost:8000' + window.location.pathname);
 
       ws.addEventListener('open', () => {
         console.log('WebSocket connection opened');

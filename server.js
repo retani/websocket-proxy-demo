@@ -1,17 +1,18 @@
 import http from 'http'
 import net from 'net'
 import cluster from 'cluster'
-import fs from 'fs'
-
-import { WebSocketServer } from 'ws'
 
 const numWorkers = 2
 const basePath = 8000
 
-if (cluster.isMaster) {
+if (cluster.isPrimary) {
   // Create workers
+  cluster.settings.exec = 'worker.js'
   for (let i = 0; i < numWorkers; i++) {
-    cluster.fork()
+    cluster.fork({
+      WORKER_ID: i + 1,
+      PORT: basePath + i + 1
+    })
   }
 
   const server = http.createServer()
@@ -39,12 +40,12 @@ if (cluster.isMaster) {
       })
     } else {
       res.writeHead(404)
-      res.end('Not Found (master)')
+      res.end('Not Found (primary)')
     }
   })
 
   server.listen(basePath, () => {
-    console.log(`Master process listening on port ${basePath}`)
+    console.log(`Primary process listening on port ${basePath}`)
   })
 
   // WebSocket proxy
@@ -70,41 +71,6 @@ if (cluster.isMaster) {
 
       // Pipe the sockets together
       socket.pipe(workerSocket).pipe(socket)
-    })
-  })
-} else {
-  const workerServer = http.createServer((req, res) => {
-    console.log(`Worker ${cluster.worker.id} serving request`, req.url)
-    //res.writeHead(200)
-    //res.end(`Hello from worker ${cluster.worker.id} serving request ${req.url}`)
-
-    // Handle regular HTTP requests here
-    fs.readFile('index.html', 'utf-8', (err, data) => {
-      if (err) {
-        res.writeHead(500)
-        res.end('Error loading index.html')
-      } else {
-        res.writeHead(200, { 'Content-Type': 'text/html' })
-        res.end(data)
-      }
-    })
-  })
-
-  workerServer.listen(basePath + cluster.worker.id, () => {
-    console.log(
-      `Worker ${cluster.worker.id} listening on port ${
-        basePath + cluster.worker.id
-      }`
-    )
-  })
-
-  // WebSocket server
-  const wss = new WebSocketServer({ server: workerServer })
-
-  wss.on('connection', ws => {
-    ws.send(`Worker ${cluster.worker.id}: connected!`)
-    ws.on('message', message => {
-      ws.send(`Worker ${cluster.worker.id}: return to sender: ${message}`)
     })
   })
 }
